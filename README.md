@@ -52,7 +52,7 @@ The bound agent + workspace + network is determined by the API key. You never ha
 
 ## Authentication + scopes
 
-Two key shapes exist (see [docs/concept-api-key-types.md](https://github.com/Tosh-Labs/blockchain0x-app/blob/dev/docs/concept-api-key-types.md) for the full decision tree):
+Two key shapes exist (see [docs/concept-api-key-types.md](https://github.com/tosh-labs/blockchain0x-app/blob/dev/docs/concept-api-key-types.md) for the full decision tree):
 
 - **Wallet-only** (sub-plan 21.1): a key bound to ONE agent via `agentId`. The right shape for an autonomous AI agent that IS one wallet.
 - **Workspace** (sub-plan 21.3): a key for human operators that can carry workspace-level scopes AND assignments to N specific wallets.
@@ -292,7 +292,7 @@ The default transport retries on `429` (honouring `Retry-After`) and `5xx`, with
 
 ## Reporting issues
 
-- Bugs + feature requests: https://github.com/Tosh-Labs/blockchain0x-node/issues
+- Bugs + feature requests: https://github.com/tosh-labs/blockchain0x-node/issues
 - Security disclosures: see SECURITY.md in this repository.
 - General docs: https://blockchain0x.com/docs
 

@@ -50,13 +50,13 @@
     "typescript",
     "nodejs"
   ],
-  "homepage": "https://github.com/Tosh-Labs/blockchain0x-node#readme",
+  "homepage": "https://github.com/tosh-labs/blockchain0x-node#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Tosh-Labs/blockchain0x-node.git"
+    "url": "git+https://github.com/tosh-labs/blockchain0x-node.git"
   },
   "bugs": {
-    "url": "https://github.com/Tosh-Labs/blockchain0x-node/issues"
+    "url": "https://github.com/tosh-labs/blockchain0x-node/issues"
   },
   "license": "Apache-2.0",
   "publishConfig": {

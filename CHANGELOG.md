@@ -44,7 +44,7 @@ MInor update
 ## [0.1.0-alpha.2] - 2026-05-29
 
 First release published from the public mirror repo
-(`Tosh-Labs/blockchain0x-node`) via npm Trusted Publisher OIDC with
+(`tosh-labs/blockchain0x-node`) via npm Trusted Publisher OIDC with
 Sigstore **provenance attestation**. Functionally identical to
 `0.1.0-alpha.1`; this version validates the two-stage release pipeline
 (private monorepo -> mirror to public repo -> publish from public repo
@@ -97,10 +97,10 @@ rotateSecret(id) / test(id, body)` resource.
   backoff (250ms / 500ms / 1s, capped at 8s, 3 retries, 50% jitter).
   `POST /v1/payments` is retry-off by default.
 
-[0.3.0-alpha.1]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.3.0-alpha.1
-[0.2.0-alpha.3]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.2.0-alpha.3
-[0.2.0-alpha.2]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.2.0-alpha.2
-[0.2.0-alpha.1]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.2.0-alpha.1
-[0.1.0-alpha.2]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.1.0-alpha.2
-[0.1.0-alpha.1]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.1.0-alpha.1
-[0.1.0-alpha.0]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.1.0-alpha.0
+[0.3.0-alpha.1]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.3.0-alpha.1
+[0.2.0-alpha.3]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.2.0-alpha.3
+[0.2.0-alpha.2]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.2.0-alpha.2
+[0.2.0-alpha.1]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.2.0-alpha.1
+[0.1.0-alpha.2]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.1.0-alpha.2
+[0.1.0-alpha.1]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.1.0-alpha.1
+[0.1.0-alpha.0]: https://github.com/tosh-labs/blockchain0x-node/releases/tag/v0.1.0-alpha.0
