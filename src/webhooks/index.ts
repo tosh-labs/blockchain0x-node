@@ -142,30 +142,37 @@ function constantTimeHexEqual(a: string, b: string): boolean {
 }
 
 export function verify(args: VerifyArgs): VerifyResult {
+  // Sub-plan 21.3 C-8 parity tightening: empty secret rejects up
+  // front (was previously collapsed into signature_mismatch via the
+  // HMAC of an empty key).
+  if (!args.secret) {
+    return { ok: false, code: 'webhook.secret_missing' };
+  }
   const sigHeader = pickHeader(args.headers, SIG_HEADER);
   if (!sigHeader) {
-    return { ok: false, code: 'signature_missing' };
+    return { ok: false, code: 'webhook.signature_missing' };
   }
   const parsed = parseSigHeader(sigHeader);
   if (!parsed || !parsed.v1) {
-    return { ok: false, code: 'signature_malformed' };
+    return { ok: false, code: 'webhook.signature_malformed' };
   }
 
   // Pull `t=` from the signature header if present, else the dedicated
-  // timestamp header. Both paths must yield an integer the verifier
-  // can range-check.
+  // timestamp header.
   const tsStr = parsed.t ?? pickHeader(args.headers, TS_HEADER);
   if (!tsStr) {
-    return { ok: false, code: 'timestamp_missing' };
+    return { ok: false, code: 'webhook.timestamp_missing' };
   }
   const ts = Number.parseInt(tsStr, 10);
   if (!Number.isFinite(ts) || ts <= 0) {
-    return { ok: false, code: 'timestamp_missing' };
+    // Sub-plan 21.3 C-8: non-numeric / non-positive `t=` is its own
+    // code now (was previously collapsed into timestamp_missing).
+    return { ok: false, code: 'webhook.timestamp_invalid' };
   }
   const tolerance = args.toleranceSec ?? DEFAULT_TOLERANCE_SEC;
   const now = (args.now ?? defaultNow)();
   if (Math.abs(now - ts) > tolerance) {
-    return { ok: false, code: 'timestamp_outside_window' };
+    return { ok: false, code: 'webhook.timestamp_outside_window' };
   }
 
   const bodyBytes =
@@ -173,7 +180,7 @@ export function verify(args: VerifyArgs): VerifyResult {
   const want = createHmac('sha256', args.secret).update(`${ts}.`).update(bodyBytes).digest('hex');
 
   if (!constantTimeHexEqual(want, parsed.v1)) {
-    return { ok: false, code: 'signature_mismatch' };
+    return { ok: false, code: 'webhook.signature_mismatch' };
   }
 
   return {

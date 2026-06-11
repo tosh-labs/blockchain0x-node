@@ -52,7 +52,12 @@ The bound agent + workspace + network is determined by the API key. You never ha
 
 ## Authentication + scopes
 
-An API key carries one or more of four wire-level scopes (set when you mint the key in the dashboard):
+Two key shapes exist (see [docs/concept-api-key-types.md](https://github.com/Tosh-Labs/blockchain0x-app/blob/dev/docs/concept-api-key-types.md) for the full decision tree):
+
+- **Wallet-only** (sub-plan 21.1): a key bound to ONE agent via `agentId`. The right shape for an autonomous AI agent that IS one wallet.
+- **Workspace** (sub-plan 21.3): a key for human operators that can carry workspace-level scopes AND assignments to N specific wallets.
+
+### Wallet scopes (four; identical in both shapes)
 
 | Scope                    | What it grants                                                                                              |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
@@ -61,9 +66,73 @@ An API key carries one or more of four wire-level scopes (set when you mint the 
 | `pay_bills`              | Create payments (`client.payments.create(...)`). Capped by the agent's spend permission allowance.          |
 | `receive_money`          | Create payment requests / invoices AND settle them on-chain (`paymentRequests.settle`).                     |
 
-Identity (name, slug, public visibility, disabled flag) is dashboard-only forever - no scope can mutate it. API-key CRUD and webhook CRUD are also dashboard-only.
+### Workspace scopes (two; workspace-flavor only)
 
-A key without `pay_bills` calling `payments.create` gets a `403 apikey.scope_insufficient` response. The SDK surfaces this as a typed `ApiKeyError` you can branch on (see below).
+| Scope                       | What it grants                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `read_workspace`            | Read workspace metadata, list members + agents, read audit log, read usage rollups.                     |
+| `manage_workspace_metadata` | Superset of `read_workspace`. Adds: update workspace public copy (description, tagline, branding, SEO). |
+
+Identity fields (name, slug, default network, disabled flag, owner) are dashboard-only forever - no scope can mutate them. API-key CRUD, webhook CRUD, team management, billing, and withdrawals are also dashboard-only.
+
+A key without the required scope gets a typed `ApiKeyError` you can branch on (see below) - `apikey.scope_insufficient`, `apikey.workspace_scope_insufficient`, or `apikey.wallet_not_assigned`.
+
+### Mint a wallet-only key
+
+For autonomous agents that ARE one wallet. Today the SDK exposes the wallet-only flow:
+
+```ts
+const key = await client.apiKeys.create({
+  label: 'Trading bot',
+  agentId: 'agt_01HQXTRADING',
+  scopes: ['read_wallet_metadata', 'pay_bills'],
+});
+console.log(key.secret); // shown ONCE - persist it in your secret store
+```
+
+### Mint a workspace key
+
+For human operators that span many wallets. The body shape is mutually exclusive with the wallet-only shape - omit `agentId` and provide `workspaceScopes` and/or `walletAssignments`:
+
+```ts
+const key = await client.apiKeys.create({
+  label: 'Treasury daily reconciliation',
+  workspaceScopes: ['read_workspace'],
+  walletAssignments: [
+    { agentId: 'agt_trading', scopes: ['read_wallet_metadata'] },
+    { agentId: 'agt_settlement', scopes: ['read_wallet_metadata'] },
+  ],
+  expiresInDays: 30, // optional; 7 / 30 / 60 / 90
+});
+console.log(key.secret); // shown ONCE
+console.log(key.workspaceScopes); // ['read_workspace']
+console.log(key.walletAssignments?.length); // 2
+```
+
+### RBAC-bounded creation
+
+The server enforces: **the minter cannot grant a scope they do not have themselves**.
+
+| Minter's workspace role  | Workspace scopes they can grant               | Per-wallet scopes they can grant                                      |
+| ------------------------ | --------------------------------------------- | --------------------------------------------------------------------- |
+| Owner / Admin            | `read_workspace`, `manage_workspace_metadata` | All 4 wallet scopes on every wallet                                   |
+| Developer (wallet-level) | `read_workspace`                              | All 4 wallet scopes on wallets the user has Developer+ grants on      |
+| Viewer (wallet-level)    | `read_workspace`                              | `read_wallet_metadata` only on wallets the user has Viewer+ grants on |
+
+Over-grant rejects with `apikey.role_insufficient_for_grants`. Ask a workspace Admin to mint the key with more scope.
+
+### List + revoke
+
+```ts
+const page = await client.apiKeys.list({ workspaceId });
+const workspaceKeys = page.data.filter((k) => k.agentId === null);
+const walletOnly = page.data.filter((k) => k.agentId !== null);
+console.log(workspaceKeys[0]?.walletAssignments?.length);
+
+await client.apiKeys.revoke({ apiKeyId: 'ak_...' });
+```
+
+Cascade behaviour (workspace keys only): when an assigned wallet is soft-deleted, the assignment row is removed. If the key has zero workspace scopes AND no remaining wallet assignments, it auto-revokes with `apikey.no_grants_remaining`. Mint a fresh key.
 
 ## Webhooks: receive + verify
 
@@ -86,8 +155,12 @@ app.post('/webhook', (req, res) => {
   });
 
   if (!result.ok) {
-    // result.code is one of: signature_missing, signature_malformed,
-    // timestamp_missing, timestamp_outside_window, signature_mismatch
+    // result.code is one of 7 dotted failure-mode codes (sub-plan 21.3
+    // C-8 parity tightening; pre-0.3.0 codes were bare strings):
+    //   webhook.secret_missing, webhook.signature_missing,
+    //   webhook.signature_malformed, webhook.timestamp_missing,
+    //   webhook.timestamp_invalid, webhook.timestamp_outside_window,
+    //   webhook.signature_mismatch
     return res.status(400).json({ code: result.code });
   }
 
@@ -168,6 +241,26 @@ try {
 ```
 
 Every error carries `code`, `status`, `requestId`, and the original raw response body (when present) so you can include the request id in your own logs for support escalation.
+
+## x402: monetize HTTP endpoints
+
+The sibling package [`@blockchain0x/x402`](https://www.npmjs.com/package/@blockchain0x/x402) ships the wire primitives, client wrapper, and Fastify / Express adapters for the x402 payment-required protocol. Mint payment requests with this SDK (`client.paymentRequests.create`), then enforce them on your HTTP routes with the x402 server adapters:
+
+```ts
+import { createX402Plugin } from '@blockchain0x/x402/server/fastify';
+
+await app.register(createX402Plugin, {
+  client, // your @blockchain0x/node client
+  resourceFor: (req) => `${req.method} ${req.routerPath}`,
+});
+
+app.post('/llm-query', { config: { x402: { amountWei: '100000' } } }, async (req) => {
+  // req.x402 carries the verified payment for this call
+  return { answer: 'Paid for via x402.' };
+});
+```
+
+Client-side, `createX402Client` from `@blockchain0x/x402/client` wraps `fetch` to attach the `X-Payment` header automatically when a 402 challenge arrives. See the package README for the full surface.
 
 ## Network mode (testnet vs mainnet)
 

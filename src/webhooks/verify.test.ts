@@ -108,7 +108,7 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'signature_missing' });
+    expect(res).toEqual({ ok: false, code: 'webhook.signature_missing' });
   });
 
   it('signature_malformed when neither v1 nor a bare hex is present', () => {
@@ -118,10 +118,10 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'signature_malformed' });
+    expect(res).toEqual({ ok: false, code: 'webhook.signature_malformed' });
   });
 
-  it('timestamp_missing when no t= nor X-...-Timestamp header is present', () => {
+  it('webhook.timestamp_missing when no t= nor X-...-Timestamp header is present', () => {
     const ts = NOW;
     const sig = sign(ts, BODY);
     const res = verify({
@@ -130,10 +130,13 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'timestamp_missing' });
+    expect(res).toEqual({ ok: false, code: 'webhook.timestamp_missing' });
   });
 
-  it('timestamp_missing when the timestamp is not an integer', () => {
+  // Sub-plan 21.3 C-8: split from timestamp_missing. A non-numeric
+  // `t=` value now returns webhook.timestamp_invalid instead of
+  // collapsing into the "no timestamp at all" code.
+  it('webhook.timestamp_invalid when the timestamp is not an integer', () => {
     const ts = NOW;
     const sig = sign(ts, BODY);
     const res = verify({
@@ -145,7 +148,22 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'timestamp_missing' });
+    expect(res).toEqual({ ok: false, code: 'webhook.timestamp_invalid' });
+  });
+
+  // Sub-plan 21.3 C-8: split from signature_mismatch (the HMAC of
+  // an empty key path). An empty secret rejects up front with
+  // webhook.secret_missing - the caller forgot to wire env.
+  it('webhook.secret_missing when the secret is an empty string', () => {
+    const ts = NOW;
+    const sig = sign(ts, BODY);
+    const res = verify({
+      headers: { 'x-blockchain0x-signature': `t=${ts},v1=${sig}` },
+      rawBody: BODY,
+      secret: '',
+      now,
+    });
+    expect(res).toEqual({ ok: false, code: 'webhook.secret_missing' });
   });
 
   it('timestamp_outside_window when the request is older than tolerance', () => {
@@ -156,7 +174,7 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'timestamp_outside_window' });
+    expect(res).toEqual({ ok: false, code: 'webhook.timestamp_outside_window' });
   });
 
   it('timestamp_outside_window also rejects far-future timestamps', () => {
@@ -167,7 +185,7 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'timestamp_outside_window' });
+    expect(res).toEqual({ ok: false, code: 'webhook.timestamp_outside_window' });
   });
 
   it('signature_mismatch when the secret is wrong', () => {
@@ -177,7 +195,7 @@ describe('webhooks.verify - failure codes', () => {
       secret: 'whsk_WRONG_SECRET',
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'signature_mismatch' });
+    expect(res).toEqual({ ok: false, code: 'webhook.signature_mismatch' });
   });
 
   it('signature_mismatch when even a single body byte is tampered', () => {
@@ -188,7 +206,7 @@ describe('webhooks.verify - failure codes', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'signature_mismatch' });
+    expect(res).toEqual({ ok: false, code: 'webhook.signature_mismatch' });
   });
 
   it('honors a custom toleranceSec when supplied (10s window rejects 11s old)', () => {
@@ -200,7 +218,7 @@ describe('webhooks.verify - failure codes', () => {
       toleranceSec: 10,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'timestamp_outside_window' });
+    expect(res).toEqual({ ok: false, code: 'webhook.timestamp_outside_window' });
   });
 });
 
@@ -216,6 +234,6 @@ describe('webhooks.verify - constant-time compare', () => {
       secret: SECRET,
       now,
     });
-    expect(res).toEqual({ ok: false, code: 'signature_mismatch' });
+    expect(res).toEqual({ ok: false, code: 'webhook.signature_mismatch' });
   });
 });

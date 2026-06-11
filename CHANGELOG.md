@@ -5,6 +5,30 @@ All notable changes to `@blockchain0x/node` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0-alpha.1] - 2026-06-11
+
+Alpha iteration: resync the published SDK with the latest dev (sub-plan 27.1 security-hardening release). No breaking API changes.
+
+## [0.3.0-alpha.0] - 2026-05-29
+
+### Breaking
+
+- `webhooks.verify` failure codes are now dotted (`webhook.*` prefix). Every code in the `WebhookSignatureErrorCode` union changed:
+
+  - `signature_missing` → `webhook.signature_missing`
+  - `signature_malformed` → `webhook.signature_malformed`
+  - `timestamp_missing` → `webhook.timestamp_missing`
+  - `timestamp_outside_window` → `webhook.timestamp_outside_window`
+  - `signature_mismatch` → `webhook.signature_mismatch`
+
+  Consumers branching on `result.code` need to add the `webhook.` prefix. The new format matches the openapi error-code convention and is now byte-equivalent across the Node, Python, Go, Ruby, and JVM SDKs (sub-plan 21.3 row C-8).
+
+### Added
+
+- Two new failure modes, split out for better diagnostics:
+  - `webhook.secret_missing` - the caller passed `secret: ''` (previously collapsed into `signature_mismatch` via HMAC-of-empty-key).
+  - `webhook.timestamp_invalid` - the `t=` value parsed but was non-finite / non-positive (previously collapsed into `timestamp_missing`).
+
 ## [0.2.0-alpha.3] - 2026-05-29
 
 minor
@@ -73,6 +97,7 @@ rotateSecret(id) / test(id, body)` resource.
   backoff (250ms / 500ms / 1s, capped at 8s, 3 retries, 50% jitter).
   `POST /v1/payments` is retry-off by default.
 
+[0.3.0-alpha.1]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.3.0-alpha.1
 [0.2.0-alpha.3]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.2.0-alpha.3
 [0.2.0-alpha.2]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.2.0-alpha.2
 [0.2.0-alpha.1]: https://github.com/Tosh-Labs/blockchain0x-node/releases/tag/v0.2.0-alpha.1

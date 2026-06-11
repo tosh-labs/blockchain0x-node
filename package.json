@@ -1,6 +1,6 @@
 {
   "name": "@blockchain0x/node",
-  "version": "0.2.0-alpha.3",
+  "version": "0.3.0-alpha.1",
   "description": "Official Blockchain0x Node.js SDK. Authenticated REST client + webhook signature verification helper. See https://blockchain0x.com/docs/sdk-node.",
   "type": "module",
   "main": "./dist/index.js",
